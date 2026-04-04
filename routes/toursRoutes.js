@@ -37,7 +37,7 @@ router.route("/")
 
 router.route("/:id")
     .get(restrictTo(...ROLES_LIST), toursController.getById)
-    .put(restrictTo(ROLES.ADMIN, ROLES.LEAD_GUIDE, ROLES.GUIDE), toursController.update)
+    .patch(restrictTo(ROLES.ADMIN, ROLES.LEAD_GUIDE, ROLES.GUIDE), toursController.update)
     .delete(restrictTo(ROLES.ADMIN, ROLES.LEAD_GUIDE, ROLES.GUIDE), toursController.delete);
 
 export default router;

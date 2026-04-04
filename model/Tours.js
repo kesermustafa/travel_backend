@@ -64,6 +64,11 @@ const tourSchema = new mongoose.Schema({
         ref: 'User',
         required: [true, 'Turu olusturam bir Yonetici olmalı.']
     },
+
+    updatedBy: {
+        type: mongoose.Schema.ObjectId,
+        ref: 'User'
+    },
     // 2. Turda görevli rehberler (Dizi Referans)
     guides: [
         {
@@ -87,12 +92,11 @@ const tourSchema = new mongoose.Schema({
 tourSchema.pre(/^find/, function() {
     this.populate({
         path: 'createdBy',
-        select: 'name email photo'
+        select: 'name email role photo'
     }).populate({
         path: 'guides',
-        select: 'name email photo'
+        select: 'name email role photo'
     });
-
 });
 
 //! Virtual Property

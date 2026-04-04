@@ -18,7 +18,7 @@ class ToursController {
         }
     }
 
-     getAllToursPageable = catchAsync(async (req, res, next) => {
+    getAllToursPageable = catchAsync(async (req, res, next) => {
         // Tüm req nesnesini veya gerekli alanları Service'e gönderiyoruz
         const result = await toursService.getPagedTours(req);
 
@@ -31,7 +31,6 @@ class ToursController {
             data: result.data,
         });
     });
-
 
     async getById(req, res) {
         const id = req.params.id;
@@ -61,21 +60,40 @@ class ToursController {
         });
     }
 
-    async update(req, res) {
-        const id = req.params.id;
+    async update(req, res, next) {
+        try {
+            const tourId = req.params.id;
+            const updateData = req.body;
+            const currentUser = req.user;
 
-        res.status(201).json({
-            message: 'Tour Updated Successfully', id: id
-        })
+            const updatedTour = await toursService.updateTour(tourId, updateData, currentUser);
+
+            res.status(200).json({
+                status: 'success',
+                message: 'Tour Updated Successfully',
+                data: {
+                    tour: updatedTour
+                }
+            });
+        } catch (err) {
+            next(err);
+        }
     }
 
 
-    async delete(req, res) {
-        const id = req.params.id;
+    async delete(req, res, next) {
+        try {
+            // req.user: Auth middleware'den gelen (login olmuş) kullanıcı
+            // req.params.id: URL'den gelen tur ID'si
+            await toursService.deleteTour(req.params.id, req.user);
 
-        res.status(200).json({
-            message: 'Tour Deleted Successfully', id: id
-        })
+            res.status(200).json({
+                status: 'success',
+                message: 'Tour Deleted Successfully'
+            });
+        } catch (err) {
+            next(err);
+        }
     }
 
     async getTourStatistics(req, res) {

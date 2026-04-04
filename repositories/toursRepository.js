@@ -35,6 +35,14 @@ class ToursRepository extends BaseRepository {
 
         return super.findWithPagination(filter, options);
     }
+
+    // Yetki kontrolü için createdBy bilgisinin rolüyle birlikte gelmesi şart
+    async findTourWithCreator(id) {
+        return await this.model.findById(id).populate({
+            path: 'createdBy',
+            select: 'role _id'
+        });
+    }
 }
 
 export default new ToursRepository();
