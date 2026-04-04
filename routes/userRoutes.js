@@ -20,7 +20,7 @@ router.use(requireAuth);
 /**
  * USER + ADMIN endpointleri
  */
-router.use(restrictTo("ADMIN", "USER"));
+router.use(restrictTo("ADMIN","GUIDE", "USER"));
 
 router.get("/me", userController.getMyProfile);
 router.patch("/me/update", userController.updateMe);
@@ -31,14 +31,19 @@ router.delete("/me/delete", userController.deleteMe);
 /**
  * Tüm alt rotalar ADMIN yetkisi gerektirir
  */
-router.use(restrictTo("ADMIN"));
+router.use(restrictTo("ADMIN", "GUIDE"));
 
 // Ana dizin işlemleri
 router.route("/")
     .get(formatQuery, userController.getAllUsers)
+
+
+router.use(restrictTo("ADMIN"));
+
+
+router.route("/")
     .post(userController.createUser);
 
-// ID bazlı işlemler (Gereksiz "/admin" takısını kaldırdık)
 router.route("/:id")
     .get(userController.getUserById)
     .patch(userController.updateUser)

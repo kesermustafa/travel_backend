@@ -96,19 +96,20 @@ userSchema.pre("save", function (next) {
 });
 
 
-/*// Sorgu Filtreleme (Active Kontrolü)
+// Sorgu Filtreleme (Active Kontrolü)
 userSchema.pre(/^find/, function () {
-
     const queryFilter = this.getQuery();
+    const options = this.getOptions();
 
-    if (queryFilter.hasOwnProperty('active')) {
-        // active=true veya active=false — olduğu gibi bırak
-        return;
-    }
+    // active filtresi varsa olduğu gibi bırak
+    if (queryFilter.hasOwnProperty('active')) return;
 
-    // active yoksa sadece silinmemiş (active: true) kullanıcıları getir
+    // includeInactive flag'i varsa (ADMIN) tüm kullanıcıları getir
+    if (options.includeInactive) return;
+
+    // Varsayılan: sadece aktif kullanıcılar
     this.where({ active: { $ne: false } });
-});*/
+});
 
 userSchema.methods.changedPasswordAfter = function (JWTTimestamp) {
     if (this.passwordChangedAt) {

@@ -52,14 +52,24 @@ class UserController {
 
     getAllUsers = catchAsync(async (req, res, next) => {
         const filter = { ...req.query };
+        const options = {};
+        const isAdmin = req.user.role === 'ADMIN';
 
-        // 'false' stringini gerçek boolean false'a çevir
-        Object.keys(filter).forEach(el => {
-            if (filter[el] === 'false') filter[el] = false;
-            if (filter[el] === 'true') filter[el] = true;
-        });
+        if (filter.hasOwnProperty('active')) {
+            // active=false sorgusu sadece ADMIN'e açık
+            if (filter.active === 'false' && !isAdmin) {
+                return next(new AppError('Bu işlem için yetkiniz yok.', 403));
+            }
 
-        const users = await userRepository.findAll(filter);
+            if (filter.active === 'false') filter.active = false;
+            if (filter.active === 'true') filter.active = true;
+        } else {
+            // active filtresi yoksa:
+            // ADMIN → tüm kullanıcılar, USER → sadece aktifler (middleware halleder)
+            if (isAdmin) options.includeInactive = true;
+        }
+
+        const users = await userRepository.findAll(filter, options);
 
         res.status(200).json({
             results: users.length,
