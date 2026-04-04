@@ -3,20 +3,21 @@ import catchAsync from "../utils/catchAsync.js";
 import {AppError} from "../errors/AppError.js";
 
 class AuthController {
-    refreshCookieOptions = {
-        maxAge: 24 * 60 * 60 * 1000,
+    baseCookieOptions = {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'Lax',
         path: '/'
     };
 
+    refreshCookieOptions = {
+        ...this.baseCookieOptions,
+        maxAge: 24 * 60 * 60 * 1000
+    };
+
     accessCookieOptions = {
-        maxAge: 1 * 60 * 60 * 1000,
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'Lax',
-        path: '/'
+        ...this.baseCookieOptions,
+        maxAge: 1 * 60 * 60 * 1000
     };
 
     // catchAsync sayesinde try-catch'e veda ediyoruz
@@ -46,13 +47,19 @@ class AuthController {
         res.cookie('refreshToken', refreshToken, this.refreshCookieOptions);
         res.status(200).json({
             status: "success",
-            user: user._id,
-            accessToken
+            data: {
+                user,
+                accessToken
+            }
         });
     });
 
     refresh = catchAsync(async (req, res, next) => {
         const {refreshToken: oldToken} = req.cookies;
+
+        if (!oldToken) {
+            return next(new AppError("Lütfen tekrar giriş yapın.", 401));
+        }
 
         const tokens = await authService.refreshTokens(
             oldToken, req.ip, req.headers['user-agent']
@@ -69,9 +76,14 @@ class AuthController {
     logout = catchAsync(async (req, res, next) => {
         const {refreshToken} = req.cookies;
 
-        if (refreshToken) {
-            await authService.logoutUser(refreshToken);
+        if (!refreshToken) {
+            return res.status(204).json({
+                status: "success",
+                message: "Zaten çıkış yapılmış."
+            });
         }
+
+        await authService.logoutUser(refreshToken);
 
         res.clearCookie('accessToken', this.accessCookieOptions);
         res.clearCookie('refreshToken', this.refreshCookieOptions);

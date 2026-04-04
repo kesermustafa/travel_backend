@@ -11,11 +11,11 @@ const userSchema = new mongoose.Schema({
 
     email: {
         type: String, required: [true, "User must have an email"], unique: true, lowercase: true, trim: true,
-        validate: [validator.isEmail, "email must be a valid email address  "],
+        validate: [validator.isEmail, "Please provide a valid email address"],
     },
 
     role: {
-        type: String, enum: ["USER", "GUIDE", "LEAD-GUIDE", "ADMIN"], default: "USER",
+        type: String, enum: ["USER", "GUIDE", "LEAD-GUIDE", "ADMIN"], default: "USER", index: true
     },
 
     active: {
@@ -35,13 +35,12 @@ const userSchema = new mongoose.Schema({
 
     passwordConfirm: {
         type: String,
-        required: [function() { return this.isNew || this.isModified('password'); }, 'Please confirm your password'],
+        required: [function() { return this.isNew || this.isModified('password'); }, 'Lütfen şifrenizi onaylayın'],
         validate: {
-            // Sadece şifre değiştirildiğinde çalışır
             validator: function(el) {
                 return el === this.password;
             },
-            message: 'Passwords are not the same!'
+            message: 'Şifreler eşleşmiyor!'
         }
     },
 
@@ -53,12 +52,12 @@ const userSchema = new mongoose.Schema({
         type: Date,
         default: null,
         select: false,
-        index: { expires: '90d' } // KRİTİK: 90 gün sonra bu dokümanı DB'den siler
+        index: { expires: '90d' }
     },
 
 }, {
     timestamps: true,
-    toObject:{virtuals: true },
+    toObject: { virtuals: true },
     toJSON: {
         transform: (doc, ret) => {
             delete ret.password;
@@ -66,6 +65,7 @@ const userSchema = new mongoose.Schema({
             delete ret.passwordChangedAt;
             delete ret.passwordResetToken;
             delete ret.passwordResetExpires;
+            delete ret.deletedAt;
             delete ret.__v;
             return ret;
         }
@@ -73,44 +73,32 @@ const userSchema = new mongoose.Schema({
 });
 
 // Şifre Hashleme
-userSchema.pre("save", async function (next) {
-    if (!this.isModified("password")) return next();
+userSchema.pre("save", async function () {
+    if (!this.isModified("password")) return;
     this.password = await bcrypt.hash(this.password, 12);
     this.passwordConfirm = undefined;
-    next();
 });
-
-
-userSchema.methods.correctPassword = async function (candidatePassword) {
-    // 'this.password' select("+password") ile çekildiği sürece burada erişilebilir olur
-    return await bcrypt.compare(candidatePassword, this.password);
-
-};
-
 
 // Şifre Değişim Tarihi Güncelleme
-userSchema.pre("save", function (next) {
-    if (!this.isModified("password") || this.isNew) return next();
+userSchema.pre("save", function () {
+    if (!this.isModified("password") || this.isNew) return;
     this.passwordChangedAt = Date.now() - 1000;
-    next();
 });
-
 
 // Sorgu Filtreleme (Active Kontrolü)
 userSchema.pre(/^find/, function () {
-    const queryFilter = this.getQuery();
-    const options = this.getOptions();
-
-    // active filtresi varsa olduğu gibi bırak
-    if (queryFilter.hasOwnProperty('active')) return;
-
-    // includeInactive flag'i varsa (ADMIN) tüm kullanıcıları getir
+    const options = this.getOptions() || {};
+    if (this.getQuery().active !== undefined) return;
     if (options.includeInactive) return;
-
-    // Varsayılan: sadece aktif kullanıcılar
-    this.where({ active: { $ne: false } });
+    this.where({ active: true });
 });
 
+// Şifre Doğrulama
+userSchema.methods.correctPassword = async function (candidatePassword) {
+    return await bcrypt.compare(candidatePassword, this.password);
+};
+
+// JWT Şifre Değişim Kontrolü
 userSchema.methods.changedPasswordAfter = function (JWTTimestamp) {
     if (this.passwordChangedAt) {
         const changedTimestamp = parseInt(
@@ -122,8 +110,8 @@ userSchema.methods.changedPasswordAfter = function (JWTTimestamp) {
     return false;
 };
 
+// Şifre Sıfırlama Token'ı
 userSchema.methods.createPasswordResetToken = function () {
-
     const resetToken = randomBytes(32).toString('hex');
 
     this.passwordResetToken = createHash('sha256')
@@ -133,7 +121,5 @@ userSchema.methods.createPasswordResetToken = function () {
     this.passwordResetExpires = Date.now() + 10 * 60 * 1000;
     return resetToken;
 };
-
-
 
 export default mongoose.model("User", userSchema);
