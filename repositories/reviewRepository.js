@@ -7,6 +7,22 @@ class ReviewRepository extends BaseRepository {
     }
 
 
+    async findReviewWithUser(id) {
+        return await this.model.findById(id)
+            .populate({
+                path: 'user',
+                select: 'role _id name'
+            })
+            .populate({
+                path: 'tour',
+                select: 'createdBy' // Turun sahibini (Lead Guide mı?) kontrol etmek için
+            });
+    }
+
+    async findByTourId(tourId, options = {}) {
+        return await this.findAll({ tour: tourId }, options);
+    }
+
 }
 
 export default ReviewRepository;

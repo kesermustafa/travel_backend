@@ -20,7 +20,15 @@ class ReviewController{
     };
 
 
+    async getTourReviews (req, res) {
+        const reviews = await reviewService.getTourReviews(req.params.tourId);
 
+        res.status(200).json({
+            status: 'success',
+            results: reviews.length,
+            data: reviews
+        });
+    };
 
 
     async getAllReviews() {}

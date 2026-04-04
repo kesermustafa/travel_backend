@@ -45,6 +45,7 @@ reviewSchema.pre(/^find/, async function () {
 
 // 3) Statik Metot: Rating Hesaplama
 reviewSchema.statics.calcAverage = async function (tourId) {
+
     const stats = await this.aggregate([
         { $match: { tour: tourId } },
         {
@@ -57,7 +58,10 @@ reviewSchema.statics.calcAverage = async function (tourId) {
     ]);
 
     const updateData = stats.length > 0
-        ? { ratingsAverage: stats[0].avgRating, ratingsQuantity: stats[0].nRating }
+        ? {
+            ratingsAverage: Math.round(stats[0].avgRating * 10) / 10, // 4.6666 -> 4.7 yapar
+            ratingsQuantity: stats[0].nRating
+        }
         : { ratingsAverage: 4.5, ratingsQuantity: 0 };
 
     await Tour.findByIdAndUpdate(tourId, updateData);
