@@ -5,7 +5,7 @@ import userService from "../services/userService.js";
 import {AppError} from "../errors/AppError.js";
 import ms from "ms";
 import RefreshToken from "../model/RefreshToken.js";
-
+import { ROLES } from '../constants/roles.js';
 
 class UserController {
 
@@ -53,7 +53,7 @@ class UserController {
     getAllUsers = catchAsync(async (req, res, next) => {
         const filter = { ...req.query };
         const options = {};
-        const isAdmin = req.user.role === 'ADMIN';
+        const isAdmin = req.user.role === ROLES.ADMIN;
 
         if (filter.hasOwnProperty('active')) {
             // active=false sorgusu sadece ADMIN'e açık

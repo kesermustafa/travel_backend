@@ -2,6 +2,9 @@ import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 import validator from "validator";
 import {randomBytes, createHash} from "node:crypto";
+import { ROLES, ROLES_LIST } from '../constants/roles.js';
+
+
 
 
 const userSchema = new mongoose.Schema({
@@ -15,7 +18,10 @@ const userSchema = new mongoose.Schema({
     },
 
     role: {
-        type: String, enum: ["USER", "GUIDE", "LEAD-GUIDE", "ADMIN"], default: "USER", index: true
+        type: String,
+        enum: ROLES_LIST,
+        default: ROLES.USER,
+        index: true
     },
 
     active: {

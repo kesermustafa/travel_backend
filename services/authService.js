@@ -21,8 +21,11 @@ class AuthService {
 
     // 1) Kayıt İşlemi
     async registerUser(userData) {
+
         // 1) E-posta kontrolü
-        const userExists = await userRepository.model.findOne({ email: userData.email });
+        const userExists =
+            await userRepository.model.findOne({ email: userData.email.toLowerCase().trim() }).getFilter();
+
         if (userExists) throw new ConflictError("Bu e-posta zaten kayıtlı.");
 
         // 2) Şifre eşleşme kontrolü (Mongoose validator'da da olabilir ama burada olması hızlı hata döndürür)

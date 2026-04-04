@@ -1,43 +1,99 @@
 import mongoose from "mongoose";
-import validator from "validator";
+import { startLocationSchema, tourLocationSchema } from "./subSchemas/locationSchema.js";
 
 const tourSchema = new mongoose.Schema({
     name: {type: String, required: [true, "Tour name is required"], trim: true, unique: true},
-    duration: {type: Number, required: true},
-    maxGroupSize: {type: Number, required: true},
-    difficulty: {type: String, required: true, enum: ["easy", "medium", "hard", "difficulty"]},
-    ratingsAverage: {type: Number, default: 4.5, min: 1, max: 5},
-    ratingsQuantity: {type: Number, default: 0},
     price: {type: Number, required: true},
-    summary: {type: String, trim: true, required: true},
-    description: {type: String, trim: true},
-    imageCover: {type: String, required: true},
-    images: {type: [String]},
-    startDates: {type: [Date]},
     priceDiscount: {type: Number,
         min:0, max:80,
         // custom validator (kendi yazdığımız kontrol methdoları)
         // doğrulama fonksiyonları false return ederse doğrulamadna geçmedi anlmaına gelir ve belge veritabanına kaydedilmez true return ederse doğrulamadan geçti anlamına gelir
         validate: {
             validator: function (value) {
-                return value > 80;
+                return value < 80;
             },
             message: "İndirim fiyatı 80 büyük olamaz",
         },
     },
+    duration: {
+        type: Number,
+        required: [true, "Tur süre değerine sahip olmalı"],
+    },
+
+    maxGroupSize: {
+        type: Number,
+        required: [
+            true,
+            "Tur maksimum kişi sayısı değerine sahip olmalı",
+        ],
+    },
+    difficulty: {type: String, required: true, enum: ["easy", "medium", "hard", "difficulty"]},
+    ratingsAverage: {
+        type: Number,
+        min: [1, "Rating değeri 1'den küçük olamaz"],
+        max: [5, "Rating değeri 5'den büyük olamaz"],
+        default: 4.0,
+    },
+    ratingsQuantity: {type: Number, default: 0},
+
+    summary: {
+        type: String,
+        maxLength: [200, "Özet alanı 200 karakteri geçemez"],
+        required: [true, "Tur özet değerine sahip olmalı"],
+    },
+    description: {
+        type: String,
+        maxLength: [1000, "Açıklama alanı 1000 karakteri geçemez"],
+        required: [true, "Tur açıklama değerine sahip olmalı"],
+    },
+
+    imageCover: {type: String, required: true},
+    images: {type: [String]},
+    startDates: {type: [Date]},
+    durationHour: { type: Number },
+
+    // Sadece adres bilgisi olan başlangıç noktası
+    startLocation: startLocationSchema,
+
+    // Gün bilgisi olan tur durakları dizisi
+    locations: [tourLocationSchema],
+
+    // 1. Turu oluşturan Yonetici (Tekil Referans)
+    createdBy: {
+        type: mongoose.Schema.ObjectId,
+        ref: 'User',
+        required: [true, 'Turu olusturam bir Yonetici olmalı.']
+    },
+    // 2. Turda görevli rehberler (Dizi Referans)
+    guides: [
+        {
+            type: mongoose.Schema.ObjectId,
+            ref: 'User'
+        }
+    ]
+
 }, {
     timestamps: true,
     toJSON: {
-        virtual: true,
+        virtuals: true,
         versionKey: false,
         transform: (doc, ret) => {
-            delete ret._id; // _id'yi gizle, virtual id kalsın
+            delete ret.id; // id'yi gizle, virtual _id kalsın
         }
     },
-    toObject: { virtual: true },
+    toObject: { virtuals: true },
 });
 
+tourSchema.pre(/^find/, function() {
+    this.populate({
+        path: 'createdBy',
+        select: 'name email photo'
+    }).populate({
+        path: 'guides',
+        select: 'name email photo'
+    });
 
+});
 
 //! Virtual Property
 // Örn: Şuan veritbanında turların fiyatlarını ve indirim fiyatını tutuyoruz ama frontend bizden
@@ -56,7 +112,22 @@ tourSchema.virtual("finalPrice").get(function () {
 // Örn: Şuan veritabanında tur ismini tutuyoruz ama client ekstra olarak slug istedi.
 // The City Wanderer: the-city-wanderer
 tourSchema.virtual("slug").get(function () {
-    return this.name.replaceAll(" ", "-").toLowerCase();
+    let text = this.name.toLowerCase();
+
+    const mapping = {
+        'ı': 'i', 'ş': 's', 'ğ': 'g', 'ü': 'u', 'ö': 'o', 'ç': 'c',
+        'İ': 'i', 'Ş': 's', 'Ğ': 'g', 'Ü': 'u', 'Ö': 'o', 'Ç': 'c'
+    };
+
+    // Türkçe karakterleri eşleştir ve değiştir
+    Object.keys(mapping).forEach(key => {
+        text = text.replaceAll(key, mapping[key]);
+    });
+
+    return text
+        .replace(/[^a-z0-9]/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-+|-+$/g, '');
 });
 
 

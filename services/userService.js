@@ -6,6 +6,7 @@ import {ValidationError} from "../errors/ValidationError.js";
 import {NotFoundError} from "../errors/NotFoundError.js";
 import {ConflictError} from "../errors/ConflictError.js";
 import filterObj from "../utils/filterObj.js";
+import {ROLES} from "../constants/roles.js";
 
 
 class UserService {
@@ -18,6 +19,7 @@ class UserService {
 
 
     async createUser(userData) {
+
 
         // 1) E-posta kontrolü
         const userExists = await userRepository.model.findOne({ email: userData.email });
@@ -49,7 +51,7 @@ class UserService {
             throw new ValidationError("Bu rota şifre güncelleme için değildir.");
         }
 
-        if (updateData.role && updateData.role !== "ADMIN" ) {
+        if (updateData.role && updateData.role !== ROLES.ADMIN ) {
             throw new ValidationError("Kendi role bilginizi guncelleyemezsiniz?");
         }
 

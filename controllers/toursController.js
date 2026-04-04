@@ -1,6 +1,7 @@
 import toursRepository from "../repositories/toursRepository.js";
 import Tour from "../model/Tours.js";
-
+import toursService from "../services/toursService.js";
+import catchAsync from "../utils/catchAsync.js";
 
 class ToursController {
 
@@ -17,31 +18,19 @@ class ToursController {
         }
     }
 
-    async getAllToursPageable(req, res, next) {
+     getAllToursPageable = catchAsync(async (req, res, next) => {
+        // Tüm req nesnesini veya gerekli alanları Service'e gönderiyoruz
+        const result = await toursService.getPagedTours(req);
 
-        try {
-            const result = await toursRepository.findWithPagination(
-
-                req.formatedQuery, {
-                page: req.formatedPage,
-                limit: req.formatedLimit,
-                sort: req.formatedSort,
-                select: req.formatedSelect,
-                populate: req.formatedPopulate,
-            });
-
-            res.status(200).json({
-                status: "success",
-                results: result.data.length,
-                total: result.total,
-                page: result.page,
-                pages: result.pages,
-                data: result.data,
-            });
-        } catch (err) {
-            next(err);
-        }
-    }
+        res.status(200).json({
+            status: "success",
+            results: result.data.length,
+            total: result.total,
+            page: result.page,
+            pages: result.pages,
+            data: result.data,
+        });
+    });
 
 
     async getById(req, res) {
@@ -61,9 +50,15 @@ class ToursController {
 
     async create(req, res) {
 
+        const tour = await toursService.createTour(req.body, req.user.id);
+
         res.status(201).json({
+            status: "success",
             message: 'Tour Created Successfully',
-        })
+            data: {
+                tour: tour
+            }
+        });
     }
 
     async update(req, res) {

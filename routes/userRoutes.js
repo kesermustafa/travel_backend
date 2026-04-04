@@ -3,6 +3,7 @@ import express from "express";
 import userController from "../controllers/userController.js";
 import { formatQuery } from "../middleware/queryFormater.js";
 import { requireAuth, restrictTo } from "../middleware/authMiddleware.js";
+import { ROLES, ROLES_LIST } from '../constants/roles.js';
 
 const router = express.Router();
 
@@ -20,7 +21,7 @@ router.use(requireAuth);
 /**
  * USER + ADMIN endpointleri
  */
-router.use(restrictTo("ADMIN","GUIDE", "USER"));
+router.use(restrictTo(...ROLES_LIST));
 
 router.get("/me", userController.getMyProfile);
 router.patch("/me/update", userController.updateMe);
@@ -31,15 +32,13 @@ router.delete("/me/delete", userController.deleteMe);
 /**
  * Tüm alt rotalar ADMIN yetkisi gerektirir
  */
-router.use(restrictTo("ADMIN", "GUIDE"));
+router.use(restrictTo(ROLES.ADMIN, ROLES.LEAD_GUIDE, ROLES.GUIDE));
 
 // Ana dizin işlemleri
 router.route("/")
     .get(formatQuery, userController.getAllUsers)
 
-
 router.use(restrictTo("ADMIN"));
-
 
 router.route("/")
     .post(userController.createUser);

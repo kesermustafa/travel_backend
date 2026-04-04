@@ -1,7 +1,7 @@
 export const aliasTopTours = (req, res, next) => {
 
     req.formatedQuery = {
-        price: { $lte: 1200 }
+        price: { $gte: 7000 }
     };
     req.formatedPage = 1;
     req.formatedLimit = 5;

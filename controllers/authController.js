@@ -1,6 +1,8 @@
 import authService from "../services/authService.js";
 import catchAsync from "../utils/catchAsync.js";
 import {AppError} from "../errors/AppError.js";
+import userRepository from "../repositories/userRepository.js";
+import {ConflictError} from "../errors/ConflictError.js";
 
 class AuthController {
     baseCookieOptions = {
@@ -22,6 +24,9 @@ class AuthController {
 
     // catchAsync sayesinde try-catch'e veda ediyoruz
     register = catchAsync(async (req, res, next) => {
+
+
+
         const {newUser, accessToken, refreshToken} = await authService.registerUser(req.body);
 
         res.cookie('accessToken', accessToken, this.accessCookieOptions);
