@@ -3,7 +3,7 @@ import reviewController from "../controllers/reviewController.js";
 import {formatQuery} from "../middleware/queryFormater.js";
 import {requireAuth, restrictTo} from "../middleware/authMiddleware.js";
 import {ROLES, ROLES_LIST} from "../constants/roles.js";
-const router = express.Router({ mergeParams: true });
+const router = express.Router();
 
 
 router.use(requireAuth);

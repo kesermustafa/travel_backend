@@ -18,9 +18,13 @@ const handleValidationErrorDB = (err) => {
     return new AppError(message, 400);
 };
 
-const handleJWTError = () => new AppError('Geçersiz token. Lütfen tekrar giriş yapın!', 401);
+const handleJWTError = () =>
+    new AppError('Geçersiz token. Lütfen tekrar giriş yapın!', 401);
 
-const handleJWTExpiredError = () => new AppError('Oturum süreniz dolmuş! Lütfen tekrar giriş yapın.', 401);
+
+const handleJWTExpiredError = () =>
+    new AppError('Oturum süreniz dolmuş! Lütfen tekrar giriş yapın.', 401);
+
 
 // Yanıt Gönderme Fonksiyonları
 const sendErrorDev = (err, res) => {
