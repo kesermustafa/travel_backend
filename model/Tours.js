@@ -1,7 +1,6 @@
 import mongoose from "mongoose";
 import { startLocationSchema, tourLocationSchema } from "./subSchemas/locationSchema.js";
 
-
 const tourSchema = new mongoose.Schema({
     name: {type: String, required: [true, "Tour name is required"], trim: true, unique: true},
     price: {type: Number, required: true},
@@ -141,6 +140,7 @@ tourSchema.virtual("reviews", {
     localField: '_id'
 });
 
+tourSchema.index({ price: 1, ratingsAverage: -1 });
 
 const Tour = mongoose.model("Tour", tourSchema);
 export default Tour;

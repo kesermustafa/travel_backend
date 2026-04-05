@@ -58,6 +58,8 @@ const reviewSchema = new Schema(
 // 1) Tekil İndeks: Bir kullanıcı bir tura sadece 1 yorum yapabilir
 reviewSchema.index({ tour: 1, user: 1 }, { unique: true });
 
+
+
 // 2) Populate Middleware
 reviewSchema.pre(/^find/, function () {
     this.populate({

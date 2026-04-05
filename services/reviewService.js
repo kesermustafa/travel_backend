@@ -41,7 +41,6 @@ class ReviewService {
     }
 
 
-    // * Belirli bir tura ait yorumları listeleme
     async getTourReviews(tourId) {
         return await reviewRepository.findByTourId(tourId, {
             sort: { createdAt: -1 },
@@ -53,7 +52,6 @@ class ReviewService {
     async createReview(reviewData, userId) {
         reviewData.user = userId;
 
-        // Yorum yapılırken kontrol et
         const hasBooked = await reviewRepository.checkUserBookedTour(
             reviewData.tour,
             userId
@@ -78,9 +76,8 @@ class ReviewService {
 
 
     async deleteReview(reviewId, currentUser) {
-        // Yetki kontrolü yapılır
-        await this.handleReviewPermission(reviewId, currentUser);
 
+        await this.handleReviewPermission(reviewId, currentUser);
         return await reviewRepository.delete(reviewId);
     }
 

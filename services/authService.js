@@ -24,7 +24,7 @@ class AuthService {
 
         // 1) E-posta kontrolü
         const userExists =
-            await userRepository.model.findOne({ email: userData.email.toLowerCase().trim() }).getFilter();
+            await userRepository.model.findOne({ email: userData.email.toLowerCase().trim() })
 
         if (userExists) throw new ConflictError("Bu e-posta zaten kayıtlı.");
 

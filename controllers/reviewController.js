@@ -18,7 +18,7 @@ class ReviewController{
 
     async deleteReview  (req, res)  {
         await reviewService.deleteReview(req.params.id, req.user);
-        res.status(204).json({
+        res.status(200).json({
             status: "success",
             message: "Yorum başarıyla silindi"
         });
