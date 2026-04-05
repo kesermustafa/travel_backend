@@ -6,6 +6,7 @@ import {discountedTours} from "../middleware/discountedTours.js";
 import {discounted20} from "../middleware/discounted20.js";
 import {requireAuth, restrictTo} from "../middleware/authMiddleware.js";
 import {ROLES, ROLES_LIST} from "../constants/roles.js";
+import reviewController from "../controllers/reviewController.js";
 
 const router = express.Router();
 
@@ -39,5 +40,14 @@ router.route("/:id")
     .get(restrictTo(...ROLES_LIST), toursController.getById)
     .patch(restrictTo(ROLES.ADMIN, ROLES.LEAD_GUIDE, ROLES.GUIDE), toursController.update)
     .delete(restrictTo(ROLES.ADMIN, ROLES.LEAD_GUIDE, ROLES.GUIDE), toursController.delete);
+
+// Nested Routes
+// POST /api/tours/123456/reviews > tura yeni bir torum ekle
+// GET /api/tours/123456/reviews > tura ait olan bütün yorumları al
+// GET /api/tours/123456/reviews/5679856754 > tura ait olan yorumların arasından belirli id'deki yorumu al
+router.route("/:tourId/reviews")
+    .get(reviewController.getTourReviews)
+    .post(reviewController.createReview );
+
 
 export default router;

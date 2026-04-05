@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import { startLocationSchema, tourLocationSchema } from "./subSchemas/locationSchema.js";
 
+
 const tourSchema = new mongoose.Schema({
     name: {type: String, required: [true, "Tour name is required"], trim: true, unique: true},
     price: {type: Number, required: true},
@@ -134,6 +135,11 @@ tourSchema.virtual("slug").get(function () {
         .replace(/^-+|-+$/g, '');
 });
 
+tourSchema.virtual("reviews", {
+    ref: 'Review',
+    foreignField: 'tour',
+    localField: '_id'
+});
 
 
 const Tour = mongoose.model("Tour", tourSchema);

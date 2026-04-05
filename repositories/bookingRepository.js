@@ -19,6 +19,8 @@ class BookingRepository extends BaseRepository {
             status: 'confirmed'
         });
     }
+
+
 }
 
 export default new BookingRepository();

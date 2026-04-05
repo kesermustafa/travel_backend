@@ -32,9 +32,22 @@ const reviewSchema = new Schema(
     },
     {
         timestamps: true,
-        toJSON: { virtuals: true,
+        toJSON: {
+            virtuals: true,
             transform: (doc, ret) => {
                 delete ret.__v;
+                delete ret._id;
+                // Eğer tour içindeki istenmeyen sanal alanları silmek istersen:
+                if (ret.tour) {
+                    delete ret.tour.slug;
+                    delete ret.tour.guides;
+                    delete ret.tour.createdBy;
+                    delete ret.tour._id;
+                }
+
+                if (ret.user){
+                    delete ret.user._id;
+                }
                 return ret;
             }
         },
@@ -49,7 +62,13 @@ reviewSchema.index({ tour: 1, user: 1 }, { unique: true });
 reviewSchema.pre(/^find/, function () {
     this.populate({
         path: "user",
-        select: "_id email name photo"
+        select: "name email photo"
+    }).populate({
+        path: "tour",
+        select: "name",
+        options: {
+            childPopulate: false,
+        }
     });
 });
 

@@ -11,16 +11,25 @@ class ReviewRepository extends BaseRepository {
         return await this.model.findById(id)
             .populate({
                 path: 'user',
-                select: 'role _id name'
+                select: 'name photo role'
             })
             .populate({
                 path: 'tour',
-                select: 'createdBy' // Turun sahibini (Lead Guide mı?) kontrol etmek için
+                select: 'name createdBy'
             });
     }
 
+
     async findByTourId(tourId, options = {}) {
         return await this.findAll({ tour: tourId }, options);
+    }
+
+    async checkUserBookedTour(tourId, userId) {
+        const booking = await this.model.findOne({
+            tour: tourId,
+            user: userId
+        });
+        return !!booking;
     }
 
 }

@@ -65,6 +65,8 @@ const userSchema = new mongoose.Schema({
     timestamps: true,
     toObject: { virtuals: true },
     toJSON: {
+        virtuals: true,
+        versionKey: false,
         transform: (doc, ret) => {
             delete ret.password;
             delete ret.passwordConfirm;
@@ -73,6 +75,7 @@ const userSchema = new mongoose.Schema({
             delete ret.passwordResetExpires;
             delete ret.deletedAt;
             delete ret.__v;
+
             return ret;
         }
     }

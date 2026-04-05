@@ -20,7 +20,8 @@ class ToursRepository extends BaseRepository {
         return await this.model.findById(id).populate({
             path: 'guides createdBy',
             select: 'name photo role'
-        });
+        })
+
     }
 
     // Base'deki metodu override ediyoruz

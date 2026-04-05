@@ -93,6 +93,29 @@ class ToursService {
        return await toursRepository.update(tourId, updateData);
     };
 
+    async getSingleTour(id) {
+        // 1. Repository'den temel veriyi çek
+        const tour = await toursRepository.findById(id);
+
+        if (!tour) return null;
+
+        // 2. Yorumları populate et (İş mantığı: Sadece son 5 yorumu getir)
+        await tour.populate({
+            path: 'reviews',
+            select: '-tour -__v',
+            options: { limit: 5, sort: { createdAt: -1 } },
+            populate: {
+                path: 'user',
+                select: 'name photo'
+            }
+        });
+
+        // 3. Ekstra iş mantığı
+        //  Turun kontenjanı dolmuş mu?
+        // tour.isFull = tour.guides.length >= tour.maxGroupSize;
+
+        return tour;
+    }
 
 }
 

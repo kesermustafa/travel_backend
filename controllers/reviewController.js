@@ -4,6 +4,11 @@ import reviewService from "../services/reviewService.js";
 class ReviewController{
 
     async createReview (req, res) {
+
+        //if (!req.body.tour) req.body.tour = req.params.tourId;
+        //req.body.tour = req.body.tour || req.params.tourId;
+        req.body.tour ??= req.params.tourId;
+
         const newReview = await reviewService.createReview(req.body, req.user.id);
         res.status(201).json({
             status: "success",
@@ -21,6 +26,9 @@ class ReviewController{
 
 
     async getTourReviews (req, res) {
+
+        console.log(req.params.tourId)
+
         const reviews = await reviewService.getTourReviews(req.params.tourId);
 
         res.status(200).json({
