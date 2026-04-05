@@ -130,8 +130,7 @@ class ToursController {
         });
     }
 
-
-// belirli bir yıl için o yılın her ayında kaç tane ve hangi turlar başlayacak
+    // todo belirli bir yıl için o yılın her ayında kaç tane ve hangi turlar başlayacak
     async getMonthlyPlan(req, res) {
         try {
             const year = Number(req.params.year);
@@ -177,7 +176,7 @@ class ToursController {
         }
     }
 
-// belirli koordinatlardaki turları filtrele
+    // todo belirli koordinatlardaki turları filtrele
     async getToursWithin(req, res) {
         try {
             // parametrelere eriş

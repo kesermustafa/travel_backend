@@ -1,11 +1,11 @@
 import reviewRepository from "../repositories/reviewRepository.js";
 import { AppError } from "../errors/AppError.js";
 import { ROLES } from "../constants/roles.js";
+import {NotFoundError} from "../errors/NotFoundError.js";
 
 class ReviewService {
-    /**
-     * Review Yetki Kontrolü (Tam Versiyon)
-     */
+
+
     async handleReviewPermission(reviewId, currentUser) {
         // 1) Yorumu, kullanıcısı ve tur sahibiyle birlikte getir
         const review = await reviewRepository.findReviewWithUser(reviewId);
@@ -40,27 +40,31 @@ class ReviewService {
         throw new AppError(`Bu yorum üzerinde işlem yapma yetkiniz yok. (Rolünüz: ${userRole})`, 403);
     }
 
-    /**
-     * Belirli bir tura ait yorumları listeleme
-     */
+
+    // * Belirli bir tura ait yorumları listeleme
     async getTourReviews(tourId) {
         return await reviewRepository.findByTourId(tourId, {
             sort: { createdAt: -1 },
-            populate: { path: 'user', select: 'name photo' }
+            populate: { path: 'user', select: '_id name email photo' }
         });
     }
 
-    /**
-     * Yeni Yorum Oluşturma
-     */
+
     async createReview(reviewData, userId) {
         reviewData.user = userId;
+
+        // Yorum yapılırken kontrol et
+        const hasBooked = await reviewRepository.checkUserBookedTour(
+            reviewData.tour,
+            userId
+        );
+
+        reviewData.isVerifiedPurchase = !!hasBooked;
+
         return await reviewRepository.create(reviewData);
     }
 
-    /**
-     * Yorum Güncelleme
-     */
+
     async updateReview(reviewId, updateData, currentUser) {
         // Yetki kontrolü yapılır
         await this.handleReviewPermission(reviewId, currentUser);
@@ -72,15 +76,43 @@ class ReviewService {
         return await reviewRepository.update(reviewId, updateData);
     }
 
-    /**
-     * Yorum Silme
-     */
+
     async deleteReview(reviewId, currentUser) {
         // Yetki kontrolü yapılır
         await this.handleReviewPermission(reviewId, currentUser);
 
         return await reviewRepository.delete(reviewId);
     }
+
+    async getReviewById(id){
+
+        const review = await reviewRepository.findById(id);
+
+        if (!review){
+            throw new NotFoundError("Review not found")
+        }
+
+        return review;
+    }
+
+
+    /**
+     * Tüm yorumları sayfalanabilir şekilde getirir
+     * @param {Object} queryParams - req.query'den gelen (page, limit, sort vb.)
+     */
+    async getAllReviews(queryParams) {
+        const { page, limit, sort, fields, ...filters } = queryParams;
+
+        return await reviewRepository.findWithPagination(filters, {
+            page: parseInt(page) || 1,
+            limit: parseInt(limit) || 10,
+            sort: sort || { createdAt: -1 },
+            select: fields,
+            populate: { path: 'user', select: '_id name email photo' }
+        });
+    }
+
+
 }
 
 

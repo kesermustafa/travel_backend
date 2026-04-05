@@ -25,8 +25,6 @@ class AuthController {
     // catchAsync sayesinde try-catch'e veda ediyoruz
     register = catchAsync(async (req, res, next) => {
 
-
-
         const {newUser, accessToken, refreshToken} = await authService.registerUser(req.body);
 
         res.cookie('accessToken', accessToken, this.accessCookieOptions);

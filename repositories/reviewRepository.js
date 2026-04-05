@@ -25,4 +25,4 @@ class ReviewRepository extends BaseRepository {
 
 }
 
-export default ReviewRepository;
+export default new ReviewRepository();

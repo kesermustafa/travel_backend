@@ -1,4 +1,5 @@
 import {NotFoundError} from "../errors/NotFoundError.js";
+import mongoose from "mongoose";
 
 export default class BaseRepository {
     constructor(model, entityName = null) {
@@ -52,12 +53,20 @@ export default class BaseRepository {
 
 
     async findById(id, options = {}) {
-        let query = this.model.findById(id);
+
+        const cleanId = id.toString().trim();
+
+        if (!mongoose.Types.ObjectId.isValid(cleanId)) {
+            throw new Error("Geçersiz ID formatı");
+        }
+
+        let query = this.model.findById(cleanId);
 
         if (options.select) query = query.select(options.select);
         if (options.populate) query = query.populate(options.populate);
 
         const doc = await query;
+
         return this.throwIfNull(doc);
     }
 

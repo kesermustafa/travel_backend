@@ -8,7 +8,8 @@ const router = express.Router();
 
 router.use(requireAuth);
 
-
+router.route("/tour/:tourId")
+    .get(restrictTo(ROLES.ADMIN, ROLES.LEAD_GUIDE, ROLES.GUIDE), reviewController.getTourReviews);
 
 router.route("/")
     .get(restrictTo(ROLES.ADMIN, ROLES.LEAD_GUIDE, ROLES.GUIDE),formatQuery, reviewController.getAllReviews)
@@ -16,8 +17,8 @@ router.route("/")
 
 router.use(restrictTo(...ROLES_LIST))
 
-router.route("/id")
-    .get(reviewController.getReviews)
+router.route("/:id")
+    .get(reviewController.getReview)
     .patch(reviewController.updateReview)
     .delete(reviewController.deleteReview)
 

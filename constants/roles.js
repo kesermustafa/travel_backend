@@ -1,7 +1,7 @@
 export const ROLES = Object.freeze({
     USER: 'USER',
     GUIDE: 'GUIDE',
-    LEAD_GUIDE: 'LEAD-GUIDE',
+    LEAD_GUIDE: 'LEAD_GUIDE',
     ADMIN: 'ADMIN',
 });
 

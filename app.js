@@ -12,6 +12,7 @@ import reviewRoutes from "./routes/reviewRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
 import { AppError } from "./errors/AppError.js";
 import { globalErrorHandler } from "./errors/globalErrorHandler.js";
+import bookingRouter from "./routes/bookingRouter.js";
 
 const app = express();
 
@@ -109,6 +110,7 @@ app.use('/api/tours', toursRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/review', reviewRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/booking', bookingRouter);
 
 app.all(/.*/, (req, res, next) => {
     next(new AppError(`Cannot find ${req.originalUrl} on this server!`, 404));

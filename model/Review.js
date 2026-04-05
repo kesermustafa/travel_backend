@@ -24,10 +24,20 @@ const reviewSchema = new Schema(
             ref: "User",
             required: [true, "Yorumu hangi kullanıcının attığını belirtin"],
         },
+
+        isVerifiedPurchase: {
+            type: Boolean,
+            default: false
+        }
     },
     {
         timestamps: true,
-        toJSON: { virtuals: true },
+        toJSON: { virtuals: true,
+            transform: (doc, ret) => {
+                delete ret.__v;
+                return ret;
+            }
+        },
         toObject: { virtuals: true }
     }
 );
@@ -36,10 +46,10 @@ const reviewSchema = new Schema(
 reviewSchema.index({ tour: 1, user: 1 }, { unique: true });
 
 // 2) Populate Middleware
-reviewSchema.pre(/^find/, async function () {
+reviewSchema.pre(/^find/, function () {
     this.populate({
         path: "user",
-        select: "name photo"
+        select: "_id email name photo"
     });
 });
 
@@ -72,7 +82,7 @@ reviewSchema.post("save", function () {
     this.constructor.calcAverage(this.tour);
 });
 
-// 5) Güncelleme ve Silme sonrası tetikleme (Express 5 uyumlu)
+// 5) Güncelleme ve Silme sonrası tetikleme
 reviewSchema.post(/^findOneAnd/, async function (doc) {
     if (doc) await doc.constructor.calcAverage(doc.tour);
 });

@@ -31,13 +31,38 @@ class ReviewController{
     };
 
 
-    async getAllReviews() {}
+    async getReview(req, res) {
+        const review = await reviewService.getReviewById(req.params.id);
+        res.status(200).json({
+            status: "success",
+            data: review
+        });
+    }
 
-    async getReview(req, res) {}
 
-    async updateReview(req, res) {}
+    async updateReview(req, res) {
+        const updatedReview = await reviewService.updateReview(req.params.id, req.body, req.user);
+        res.status(200).json({
+            status: "success",
+            data: updatedReview
+        });
+    }
 
-    async getReviews(req, res) {}
+    async getAllReviews (req, res)  {
+
+        const result = await reviewService.getAllReviews(req.query);
+
+        res.status(200).json({
+            status: "success",
+            total: result.total,
+            results: result.data.length,
+            page: result.page,
+            pages: result.pages,
+            data: result.data
+        });
+    };
+
+
 
 }
 
