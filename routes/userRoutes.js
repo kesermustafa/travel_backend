@@ -4,6 +4,7 @@ import userController from "../controllers/userController.js";
 import { formatQuery } from "../middleware/queryFormater.js";
 import { requireAuth, restrictTo } from "../middleware/authMiddleware.js";
 import { ROLES, ROLES_LIST } from '../constants/roles.js';
+import upload from "../utils/multerUpload.js";
 
 const router = express.Router();
 
@@ -24,7 +25,7 @@ router.use(requireAuth);
 router.use(restrictTo(...ROLES_LIST));
 
 router.get("/me", userController.getMyProfile);
-router.patch("/me/update", userController.updateMe);
+router.patch("/me/update",upload.single('photo'), userController.updateMe);
 router.patch("/me/update-password", userController.updatePassword);
 router.delete("/me/delete", userController.deleteMe);
 

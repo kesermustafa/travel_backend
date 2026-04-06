@@ -6,6 +6,7 @@ import {AppError} from "../errors/AppError.js";
 import ms from "ms";
 import RefreshToken from "../model/RefreshToken.js";
 import { ROLES } from '../constants/roles.js';
+import {processSingleImage} from "../utils/imageHandler.js";
 
 class UserController {
 
@@ -163,6 +164,16 @@ class UserController {
     });
 
     updateMe = catchAsync(async (req, res, next) => {
+
+        if (req.file) {
+            // Profil: 400x400 Tam Kare (Center Crop)
+            req.body.photo = await processSingleImage(
+                req.file.buffer,
+                'users',
+                [400, 400]
+            );
+        }
+
         const result = await userService.updateMe(
             req.user.id,     // userId
             req.body,        // updateData

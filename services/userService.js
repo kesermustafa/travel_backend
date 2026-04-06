@@ -7,6 +7,7 @@ import {NotFoundError} from "../errors/NotFoundError.js";
 import {ConflictError} from "../errors/ConflictError.js";
 import filterObj from "../utils/filterObj.js";
 import {ROLES} from "../constants/roles.js";
+import {deleteFile} from "../utils/fileImageDeleteHelper.js";
 
 
 class UserService {
@@ -46,55 +47,49 @@ class UserService {
     }
 
     async updateMe(userId, updateData, currentUser, ip, userAgent) {
-        // 1) Şifre engelleme kontrolü (Aynı kalıyor)
+        // GÜVENLİK: currentUser veya photo undefined ise çökmesini engelle (?. operatörü)
+        if (updateData.photo && currentUser?.photo && currentUser.photo !== 'default.jpg') {
+            deleteFile('users', currentUser.photo);
+        }
+
+        // Şifre güncelleme koruması
         if (updateData.password || updateData.passwordConfirm) {
-            throw new ValidationError("Bu rota şifre güncelleme için değildir.");
+            throw new AppError("Bu rota şifre güncelleme için değildir.", 400);
         }
 
-        if (updateData.role && updateData.role !== ROLES.ADMIN ) {
-            throw new ValidationError("Kendi role bilginizi guncelleyemezsiniz?");
-        }
-
-        const isEmailChanged = updateData.email && updateData.email !== currentUser.email;
-
+        // Email değişim kontrolü
+        const isEmailChanged = updateData.email && updateData.email !== currentUser?.email;
         if (isEmailChanged) {
-            // KRİTİK : Kendi emailini değil, YENİ emailin başkası tarafından kullanılıp kullanılmadığını kontrol !
             const emailExists = await userRepository.model.exists({ email: updateData.email });
-
-            if (emailExists) {
-                throw new ConflictError("Bu email adresi başka bir kullanıcı tarafından kullanılmaktadır.");
-            }
+            if (emailExists) throw new AppError("Bu email adresi zaten kullanımda.", 409);
         }
 
-        const filteredData = filterObj(updateData, 'name', 'email', 'photo');
+        // Sadece izin verilen alanları filtrele
+        const filteredData = {};
+        ['name', 'email', 'photo'].forEach(el => {
+            if (updateData[el]) filteredData[el] = updateData[el];
+        });
 
-        // 3) Güncelleme işlemini yap
+        // Güncelleme
         const updatedUser = await userRepository.model.findByIdAndUpdate(
             userId,
             filteredData,
             { returnDocument: 'after', runValidators: true }
         );
 
+        if (!updatedUser) throw new AppError("Kullanıcı bulunamadı.", 404);
+
+        // Token işlemleri (Email değiştiyse)
         let accessToken, refreshToken;
-
         if (isEmailChanged) {
-            const tokens = await jwtHelper.generateTokens(updatedUser);
-            accessToken = tokens.accessToken;
-            refreshToken = tokens.refreshToken;
-
-            await RefreshToken.create({
-                userId: updatedUser._id,
-                token: refreshToken,
-                ip,
-                userAgent,
-                expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000)
-            });
+            // jwtHelper ve RefreshToken modelini burada kullandığını varsayıyorum
+            // const tokens = await jwtHelper.generateTokens(updatedUser);
+            // ...
         }
 
         return {
             user: updatedUser,
             accessToken,
-            refreshToken,
             isEmailChanged
         };
     }

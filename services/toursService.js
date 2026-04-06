@@ -1,7 +1,7 @@
 import toursRepository from "../repositories/toursRepository.js";
 import {AppError} from "../errors/AppError.js";
 import {ROLES} from "../constants/roles.js";
-import {deleteFile} from "../utils/fileHelper.js";
+import {deleteFile} from "../utils/fileImageDeleteHelper.js";
 
 class ToursService {
 

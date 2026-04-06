@@ -2,9 +2,9 @@ import toursRepository from "../repositories/toursRepository.js";
 import Tour from "../model/Tours.js";
 import toursService from "../services/toursService.js";
 import catchAsync from "../utils/catchAsync.js";
-import upload from "../utils/multerUpload.js"; // Multer ayarları
+import upload from "../utils/multerUpload.js";
 import { processSingleImage, processMultipleImages } from "../utils/imageHandler.js";
-import {deleteFile} from "../utils/fileHelper.js";
+
 
 class ToursController {
     // --- RESİM YÜKLEME MIDDLEWARE ---
@@ -24,7 +24,7 @@ class ToursController {
             req.body.imageCover = await processSingleImage(
                 req.files.imageCover[0].buffer,
                 'tours',
-                [2000, 1333]
+                [1200, null]
             );
         }
 
@@ -33,7 +33,7 @@ class ToursController {
             req.body.images = await processMultipleImages(
                 req.files.images,
                 'tours',
-                [2000, 1333]
+                [800, null]
             );
         }
     }
