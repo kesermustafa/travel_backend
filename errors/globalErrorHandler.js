@@ -63,6 +63,11 @@ export const globalErrorHandler = (err, req, res, next) => {
         let error = { ...err };
         error.message = err.message;
 
+        // --- MULTER HATALARI ---
+        if (err.code === 'LIMIT_FILE_SIZE') {
+            error = new AppError('Dosya boyutu çok büyük! Maksimum limit 10MB.', 400);
+        }
+
         // Mongoose & JWT Hatalarını Yakala
         if (err.name === 'CastError') error = handleCastErrorDB(error);
         if (err.code === 11000) error = handleDuplicateFieldsDB(error);

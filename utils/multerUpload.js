@@ -1,22 +1,26 @@
 import multer from 'multer';
+import {AppError} from "../errors/AppError.js";
 
 const multerStorage = multer.memoryStorage();
 
 const multerFilter = (req, file, cb) => {
-    // Desteklenen formatları genişlettik
-    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    // Desteklenen formatlar
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml'];
 
     if (allowedTypes.includes(file.mimetype)) {
         cb(null, true);
     } else {
-        cb(new Error('Hatalı dosya tipi! Lütfen JPG, JPEG, PNG veya WEBP yükleyin.'), false);
+        cb(new AppError('Hatalı dosya tipi! Lütfen JPG, JPEG, PNG veya WEBP yükleyin.', 400), false);
     }
 };
 
 const upload = multer({
     storage: multerStorage,
     fileFilter: multerFilter,
+    limits: {
+        fileSize: 10 * 1024 * 1024
+    }
 });
 
-// Dinamik olarak istediğimiz alanları seçebilmek için export ediyoruz
+
 export default upload;

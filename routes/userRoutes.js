@@ -1,4 +1,3 @@
-
 import express from "express";
 import userController from "../controllers/userController.js";
 import { formatQuery } from "../middleware/queryFormater.js";
@@ -25,7 +24,7 @@ router.use(requireAuth);
 router.use(restrictTo(...ROLES_LIST));
 
 router.get("/me", userController.getMyProfile);
-router.patch("/me/update",upload.single('photo'), userController.updateMe);
+router.patch("/me/update", upload.single('photo'), userController.updateMe);
 router.patch("/me/update-password", userController.updatePassword);
 router.delete("/me/delete", userController.deleteMe);
 

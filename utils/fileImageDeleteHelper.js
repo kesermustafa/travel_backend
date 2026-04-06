@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import {AppError} from "../errors/AppError.js";
 
 /**
  * Verilen dosya adını sunucudaki klasörden siler.
@@ -14,6 +15,7 @@ export const deleteFile = (folder, filename) => {
     // Dosya var mı kontrol et ve sil
     fs.unlink(filePath, (err) => {
         if (err) {
+            new AppError(`Dosya silinemedi: ${filePath}`, 400)
             console.error(`Dosya silinemedi: ${filePath}`, err);
         } else {
             console.log(`Dosya başarıyla silindi: ${filePath}`);

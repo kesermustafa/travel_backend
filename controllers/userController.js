@@ -166,18 +166,17 @@ class UserController {
     updateMe = catchAsync(async (req, res, next) => {
 
         if (req.file) {
-            // Profil: 400x400 Tam Kare (Center Crop)
             req.body.photo = await processSingleImage(
-                req.file.buffer,
+                req.file,
                 'users',
                 [400, 400]
             );
         }
 
         const result = await userService.updateMe(
-            req.user.id,     // userId
-            req.body,        // updateData
-            req.user,        // currentUser (Mongoose dökümanı veya objesi)
+            req.user.id,
+            req.body,
+            req.user,
             req.ip,
             req.headers['user-agent']
         );
