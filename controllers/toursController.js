@@ -2,26 +2,49 @@ import toursRepository from "../repositories/toursRepository.js";
 import Tour from "../model/Tours.js";
 import toursService from "../services/toursService.js";
 import catchAsync from "../utils/catchAsync.js";
+import upload from "../utils/multerUpload.js"; // Multer ayarları
+import { processSingleImage, processMultipleImages } from "../utils/imageHandler.js";
+import {deleteFile} from "../utils/fileHelper.js";
 
 class ToursController {
+    // --- RESİM YÜKLEME MIDDLEWARE ---
+    // imageCover (1 adet) ve images (max 6 adet) alanlarını yakalar
+    uploadTourPhotos = upload.fields([
+        { name: 'imageCover', maxCount: 1 },
+        { name: 'images', maxCount: 6 }
+    ]);
 
-    async getAllTours(req, res, next) {
-        try {
+    // --- RESİM İŞLEME YARDIMCI FONKSİYONU ---
+    // Hem create hem update içinde kullanılabilir
+    async _handleImages(req) {
+        if (!req.files) return;
 
-            const tours = await toursRepository.findAll(req.formatedQuery);
+        // 1. Kapak fotoğrafı işleme
+        if (req.files.imageCover) {
+            req.body.imageCover = await processSingleImage(
+                req.files.imageCover[0].buffer,
+                'tours',
+                [2000, 1333]
+            );
+        }
 
-            res.status(200).json({
-                results: tours.length, tours,
-            });
-        } catch (err) {
-            next(err);
+        // 2. Galeri fotoğrafları işleme
+        if (req.files.images) {
+            req.body.images = await processMultipleImages(
+                req.files.images,
+                'tours',
+                [2000, 1333]
+            );
         }
     }
 
-    getAllToursPageable = catchAsync(async (req, res, next) => {
-        // Tüm req nesnesini veya gerekli alanları Service'e gönderiyoruz
-        const result = await toursService.getPagedTours(req);
+    getAllTours = catchAsync(async (req, res, next) => {
+        const tours = await toursRepository.findAll(req.formatedQuery);
+        res.status(200).json({ results: tours.length, tours });
+    });
 
+    getAllToursPageable = catchAsync(async (req, res, next) => {
+        const result = await toursService.getPagedTours(req);
         res.status(200).json({
             status: "success",
             results: result.data.length,
@@ -32,299 +55,193 @@ class ToursController {
         });
     });
 
-    async getById(req, res) {
-        try {
-            const tour = await toursService.getSingleTour(req.params.id);
+    getById = catchAsync(async (req, res, next) => {
+        const tour = await toursService.getSingleTour(req.params.id);
+        if (!tour) return next(new Error('Tur bulunamadı')); // Custom error handler'a gönder
+        res.status(200).json({ status: 'success', tour });
+    });
 
-            if (!tour) {
-                return res.status(404).json({
-                    status: 'fail',
-                    message: 'Tur bulunamadı'
-                });
-            }
 
-            res.status(200).json({
-                status: 'success',
-                tour: tour
-            });
-        } catch (err) {
-            res.status(500).json({ status: 'error', message: err.message });
-        }
-    }
-
-    async create(req, res) {
+    create = catchAsync(async (req, res, next) => {
+        // Resimler varsa işle ve req.body'ye isimlerini yaz
+        await this._handleImages(req);
 
         const tour = await toursService.createTour(req.body, req.user.id);
 
         res.status(201).json({
             status: "success",
             message: 'Tour Created Successfully',
-            data: {
-                tour: tour
-            }
+            data: { tour }
         });
-    }
+    });
 
-    async update(req, res, next) {
-        try {
-            const tourId = req.params.id;
-            const updateData = req.body;
-            const currentUser = req.user;
 
-            const updatedTour = await toursService.updateTour(tourId, updateData, currentUser);
+    update = catchAsync(async (req, res, next) => {
+        // Yeni resimler geldiyse işle
+        await this._handleImages(req);
 
-            res.status(200).json({
-                status: 'success',
-                message: 'Tour Updated Successfully',
-                data: {
-                    tour: updatedTour
-                }
-            });
-        } catch (err) {
-            next(err);
+        const updatedTour = await toursService.updateTour(req.params.id, req.body, req.user);
+
+        if (!updatedTour) {
+            return next(new Error('Bu ID ile bir tur bulunamadı!'));
         }
-    }
 
 
-    async delete(req, res, next) {
-        try {
-            // req.user: Auth middleware'den gelen (login olmuş) kullanıcı
-            // req.params.id: URL'den gelen tur ID'si
-            await toursService.deleteTour(req.params.id, req.user);
+        res.status(200).json({
+            status: 'success',
+            message: 'Tour Updated Successfully',
+            data: { tour: updatedTour }
+        });
+    });
 
-            res.status(200).json({
-                status: 'success',
-                message: 'Tour Deleted Successfully'
-            });
-        } catch (err) {
-            next(err);
-        }
-    }
+    delete = catchAsync(async (req, res, next) => {
+        await toursService.deleteTour(req.params.id, req.user);
+        res.status(200).json({ status: 'success', message: 'Tour Deleted Successfully' });
+    });
 
-    async getTourStatistics(req, res) {
-        const stats = await Tour.aggregate([// 1. Adım: Ratingi 4 ve üzeri olan turları filtrele
-            {$match: {ratingsAverage: {$gte: 4}}},
+    deleteTourImage = catchAsync(async (req, res, next) => {
+        const updatedTour = await toursService.deleteImage(
+            req.params.id,
+            req.params.filename,
+            req.user
+        );
 
-            // 2. Adım: Zorluğa göre gruplandır ve ham ortalamaları hesapla
+        res.status(200).json({
+            status: 'success',
+            message: 'Resim başarıyla temizlendi.',
+            data: { tour: updatedTour }
+        });
+    });
+
+    // İstatistik ve Planlama metodlarını catchAsync ile sarmalayarak try-catch kalabalığından kurtulalım
+    getTourStatistics = catchAsync(async (req, res, next) => {
+        const stats = await Tour.aggregate([
+            { $match: { ratingsAverage: { $gte: 4 } } },
             {
                 $group: {
                     _id: "$difficulty",
-                    count: {$sum: 1},
-                    avgRating: {$avg: "$ratingsAverage"},
-                    avgPrice: {$avg: "$price"},
-                    minPrice: {$min: "$price"},
-                    maxPrice: {$max: "$price"},
+                    count: { $sum: 1 },
+                    avgRating: { $avg: "$ratingsAverage" },
+                    avgPrice: { $avg: "$price" },
+                    minPrice: { $min: "$price" },
+                    maxPrice: { $max: "$price" },
                 },
             },
-
-            // 3. Adım: Ondalık basamakları sınırla (4.666 -> 4.66)
             {
                 $set: {
-                    avgRating: {$trunc: ["$avgRating", 2]}, avgPrice: {$trunc: ["$avgPrice", 2]}
+                    avgRating: { $trunc: ["$avgRating", 2] },
+                    avgPrice: { $trunc: ["$avgPrice", 2] }
                 }
             },
+            { $sort: { avgPrice: 1 } },
+            { $match: { avgPrice: { $gte: 500 } } }
+        ]);
 
-            // 4. Adım: Formatlanmış fiyata göre küçükten büyüğe sırala
-            {$sort: {avgPrice: 1}},
+        res.status(200).json({ status: "success", stats });
+    });
 
-            // 5. Adım: Ortalama fiyatı 500'den büyük olan grupları al
-            {$match: {avgPrice: {$gte: 500}}},]);
+    getMonthlyPlan = catchAsync(async (req, res, next) => {
+        const year = Number(req.params.year);
+        if (isNaN(year)) return next(new Error('Geçersiz yıl parametresi'));
 
-        return res.status(200).json({
-            status: "success", message: "Rapor Oluşturuldu", stats
-        });
-    }
-
-    // todo belirli bir yıl için o yılın her ayında kaç tane ve hangi turlar başlayacak
-    async getMonthlyPlan(req, res) {
-        try {
-            const year = Number(req.params.year);
-
-            if (isNaN(year)) {
-                return res.status(400).json({
-                    status: 'fail', message: 'Geçersiz yıl parametresi',
-                });
-            }
-
-            // Aggregation pipeline
-            const stats = await Tour.aggregate([{$unwind: "$startDates"}, // startDates array'ini ayır
-                {
-                    $addFields: {
-                        startDateObj: {$toDate: "$startDates"} // string ise Date'e çevir
+        const stats = await Tour.aggregate([
+            { $unwind: "$startDates" },
+            { $addFields: { startDateObj: { $toDate: "$startDates" } } },
+            {
+                $match: {
+                    startDateObj: {
+                        $gte: new Date(`${year}-01-01`),
+                        $lte: new Date(`${year}-12-31`)
                     }
-                }, {
-                    $match: {
-                        startDateObj: {
-                            $gte: new Date(`${year}-01-01T00:00:00Z`), $lte: new Date(`${year}-12-31T23:59:59Z`)
-                        }
-                    }
-                }, {
-                    $group: {
-                        _id: {$month: "$startDateObj"}, count: {$sum: 1}, tours: {$push: "$name"}
-                    }
-                }, {$addFields: {month: "$_id"}}, {$project: {_id: 0}}, {$sort: {month: 1}}]);
-
-            if (!stats || stats.length === 0) {
-                return res.status(404).json({
-                    status: 'fail', message: `${year} yılında herhangi bir tur başlamıyor`,
-                });
-            }
-
-            res.status(200).json({
-                status: 'success', message: `${year} yılı için aylık plan oluşturuldu`, stats
-            });
-
-        } catch (err) {
-            res.status(500).json({
-                status: 'error', message: err.message
-            });
-        }
-    }
-
-    // todo belirli koordinatlardaki turları filtrele
-    async getToursWithin(req, res) {
-        try {
-            const { distance, latlng, unit } = req.params;
-
-            // 1. Koordinatları ayır
-            const [lat, lng] = latlng.split(",");
-
-            // 2. Sayısal dönüşümleri yap
-            const latitude = Number(lat);
-            const longitude = Number(lng);
-            const dist = Number(distance);
-
-            // 3. Geçerlilik Kontrolleri (Validation)
-            if (isNaN(latitude) || isNaN(longitude)) {
-                return res.status(400).json({
-                    status: 'fail',
-                    message: 'Lütfen geçerli sayısal enlem ve boylam değerleri girin (Örn: 38.4,27.1)',
-                });
-            }
-
-            if (isNaN(dist) || dist <= 0) {
-                return res.status(400).json({
-                    status: 'fail',
-                    message: 'Mesafe (distance) pozitif bir sayı olmalıdır.',
-                });
-            }
-
-            let radian;
-            if (unit === 'mi' || unit === 'mil') {
-                radian = dist / 3963.2; // Mil için dünya yarıçapı
-            } else if (unit === 'km') {
-                radian = dist / 6378.1; // Kilometre için dünya yarıçapı
-            } else {
-                // Eğer km, mi veya mil değilse hata döndür
-                return res.status(400).json({
-                    status: 'fail',
-                    message: "Lütfen geçerli bir birim girin: 'km', 'mi' veya 'mil'.",
-                });
-            }
-
-
-            // 5. MongoDB Sorgusu
-            // [longitude, latitude] sırasına dikkat!
-            const tours = await Tour.find({
-                startLocation: {
-                    $geoWithin: {
-                        $centerSphere: [[longitude, latitude], radian],
-                    },
-                },
-            });
-
-            res.status(200).json({
-                status: 'success',
-                message: `${distance}'${unit} mesafede ${tours.length} tur bulundu `,
-                results: tours.length,
-                data: {
-                   tours
                 }
-            });
+            },
+            {
+                $group: {
+                    _id: { $month: "$startDateObj" },
+                    count: { $sum: 1 },
+                    tours: { $push: "$name" }
+                }
+            },
+            { $addFields: { month: "$_id" } },
+            { $project: { _id: 0 } },
+            { $sort: { month: 1 } }
+        ]);
 
-        } catch (err) {
-            res.status(500).json({
-                status: 'error',
-                message: err.message,
-            });
-        }
-    }
+        res.status(200).json({ status: 'success', stats });
+    });
 
-    async getDistances(req, res) {
-        try {
-            const { latlng, unit } = req.params;
+    getToursWithin = catchAsync(async (req, res, next) => {
+        const { distance, latlng } = req.params;
+        const unit = req.params.unit || 'km';
 
-            // 1. Koordinatları ayır ve sayıya çevir
-            const [lat, lng] = latlng.split(",");
-            const latitude = Number(lat);
-            const longitude = Number(lng);
+        const [lat, lng] = latlng.split(",");
+        const latitude = Number(lat);
+        const longitude = Number(lng);
+        const dist = Number(distance);
 
-            // 2. Geçerlilik kontrolü
-            if (isNaN(latitude) || isNaN(longitude)) {
-                return res.status(400).json({
-                    status: 'fail',
-                    message: 'Lütfen geçerli sayısal enlem ve boylam değerleri girin (Örn: 38,35)',
-                });
-            }
+        if (isNaN(latitude) || isNaN(longitude)) return next(new Error('Geçerli koordinat girin'));
 
-            // 3. Unit kontrolü ve Multiplier (Çarpan) belirleme
-            // MongoDB varsayılan olarak METRE döner.
-            let multiplier;
-            if (unit === 'mi' || unit === 'mil') {
-                multiplier = 0.000621371192;
-            } else if (unit === 'km') {
-                multiplier = 0.001;
-            } else {
-                return res.status(400).json({
-                    status: 'fail',
-                    message: "Lütfen geçerli bir birim girin: 'km', 'mi' veya 'mil'.",
-                });
-            }
+        const radian = unit === 'mi' || unit === 'mil' ? dist / 3963.2 : dist / 6378.1;
 
-            const distances = await Tour.aggregate([
-                {
-                    $geoNear: {
-                        near: {
-                            type: 'Point',
-                            coordinates: [longitude, latitude]
-                        },
-                        distanceField: 'distance',
-                        distanceMultiplier: multiplier,
-                        spherical: true,
-                    },
+        const tours = await Tour.find({
+            startLocation: {
+                $geoWithin: {
+                    $centerSphere: [[longitude, latitude], radian],
                 },
-                {
-                    // $addFields kullanarak mevcut 'distance' alanını yuvarlayalım
-                    $addFields: {
-                        distance: { $round: ['$distance', 1] }
+            },
+        });
+
+        res.status(200).json({
+            status: 'success',
+            results: tours.length,
+            data: { tours }
+        });
+    });
+
+    getDistances = catchAsync(async (req, res, next) => {
+        const { latlng } = req.params;
+        const unit = req.params.unit || 'km';
+
+        const [lat, lng] = latlng.split(",");
+        const latitude = Number(lat);
+        const longitude = Number(lng);
+
+        const multiplier = (unit === 'mi' || unit === 'mil') ? 0.000621371 : 0.001;
+
+        const distances = await Tour.aggregate([
+            {
+                $geoNear: {
+                    near: { type: 'Point', coordinates: [longitude, latitude] },
+                    distanceField: 'distance',
+                    distanceMultiplier: multiplier,
+                    spherical: true,
+                },
+            },
+            { $addFields: { distance: { $round: ['$distance', 1] } } },
+            {
+                $project: {
+                    _id: 0,
+                    id: '$_id',
+                    name: 1,
+                    distance: 1,
+                    ratingsAverage: 1,
+                    finalPrice: {
+                        $round: [
+                            {
+                                $subtract: [
+                                    '$price',
+                                    { $multiply: ['$price', { $divide: [{ $ifNull: ['$priceDiscount', 0] }, 100] }] }
+                                ]
+                            },
+                            2
+                        ]
                     }
-                },
-                {
-                    $project: {
-                        name: 1,
-                        distance: 1,
-                    },
-                },
-            ]);
+                }
+            }
+        ]);
 
-            res.status(200).json({
-                status: 'success',
-                message: `Turların merkeze olan uzaklıkları (${unit}) hesaplandı.`,
-                results: distances.length,
-                data: {
-                    data: distances
-                },
-            });
-
-        } catch (err) {
-            res.status(500).json({
-                status: 'error',
-                message: 'Uzaklık hesaplanırken bir hata oluştu: ' + err.message,
-            });
-        }
-    }
-
-
+        res.status(200).json({ status: 'success', data: { data: distances } });
+    });
 }
 
 export default new ToursController();

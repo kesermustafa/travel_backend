@@ -1,6 +1,7 @@
 import toursRepository from "../repositories/toursRepository.js";
 import {AppError} from "../errors/AppError.js";
 import {ROLES} from "../constants/roles.js";
+import {deleteFile} from "../utils/fileHelper.js";
 
 class ToursService {
 
@@ -9,12 +10,14 @@ class ToursService {
 
         if (!tour) throw new AppError('Tur bulunamadı.', 404);
 
-        const userRole = currentUser.role;
-        const userId = currentUser.id.toString();
+       if (!tour.createdBy) {
+           throw new AppError('Turu oluşturan kullanıcı bilgisine ulaşılamadı.', 400);
+       }
 
-        // createdBy populate edilmiş olmalı (repository'de yaptığımız gibi)
-        const creatorId = tour.createdBy._id.toString();
-        const creatorRole = tour.createdBy.role;
+       const userRole = currentUser.role;
+       const userId = currentUser.id.toString();
+       const creatorId = tour.createdBy._id.toString(); // Artık güvenli
+       const creatorRole = tour.createdBy.role;
 
         // YETKİ MATRİSİ
         // 1. ADMIN Kontrolü
@@ -74,17 +77,42 @@ class ToursService {
         return result;
     }
 
-    async deleteTour  (tourId, currentUser)  {
-        // Önce yetkiyi kontrol et, yetki yoksa zaten aşağıya geçmeden hata fırlatır.
-        await this.handleTourPermission(tourId, currentUser);
+    async deleteTour(tourId, currentUser) {
+        // 1. Yetki kontrolü ve turu çekme
+        const tour = await this.handleTourPermission(tourId, currentUser);
 
-        // Yetki tamsa silme işlemini yap.
+        // 2. Fiziksel dosyaları diskten temizle
+        if (tour.imageCover) deleteFile('tours', tour.imageCover);
+        if (tour.images && tour.images.length > 0) {
+            tour.images.forEach(img => deleteFile('tours', img));
+        }
+
+        // 3. Veritabanından sil
         return await toursRepository.delete(tourId);
     };
 
+    async deleteImage(tourId, filename, currentUser) {
+        // 1. Yetki kontrolü (Kendi turu mu veya Admin mi?)
+        await this.handleTourPermission(tourId, currentUser);
+
+        // 2. Repository'den DB güncellemesini yap
+        const updatedTour = await toursRepository.removeImage(tourId, filename);
+
+        if (!updatedTour) throw new AppError('Tur bulunamadı.', 404);
+
+        // 3. Fiziksel dosyayı diskten yok et
+        deleteFile('tours', filename);
+
+        return updatedTour;
+    }
+
     async updateTour (tourId, updateData, currentUser) {
        // Yetki kontrolünü yukarıdaki ortak fonksiyondan yapıyoruz
-       await this.handleTourPermission(tourId, currentUser);
+        const oldTour = await this.handleTourPermission(tourId, currentUser);
+
+        if (updateData.imageCover && oldTour.imageCover) {
+            deleteFile('tours', oldTour.imageCover);
+        }
 
        // Audit bilgileri ve güvenlik
        updateData.updatedBy = currentUser.id;
@@ -116,6 +144,8 @@ class ToursService {
 
         return tour;
     }
+
+
 
 }
 

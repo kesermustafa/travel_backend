@@ -44,6 +44,14 @@ class ToursRepository extends BaseRepository {
             select: 'role _id'
         });
     }
+
+    async removeImage(tourId, filename) {
+        return await this.model.findByIdAndUpdate(
+            tourId,
+            { $pull: { images: filename } },
+            { returnDocument: 'after', runValidators: true }
+        );
+    }
 }
 
 export default new ToursRepository();

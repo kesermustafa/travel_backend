@@ -34,12 +34,14 @@ router.route("/monthly/:year")
 
 router.route("/")
     .get(restrictTo(...ROLES_LIST),formatQuery, toursController.getAllTours)
-    .post(restrictTo(ROLES.ADMIN, ROLES.LEAD_GUIDE, ROLES.GUIDE), toursController.create);
+    .post(restrictTo(ROLES.ADMIN, ROLES.LEAD_GUIDE, ROLES.GUIDE), toursController.uploadTourPhotos, toursController.create);
 
 router.route("/:id")
     .get(restrictTo(...ROLES_LIST), toursController.getById)
-    .patch(restrictTo(ROLES.ADMIN, ROLES.LEAD_GUIDE, ROLES.GUIDE), toursController.update)
+    .patch(restrictTo(ROLES.ADMIN, ROLES.LEAD_GUIDE, ROLES.GUIDE), toursController.uploadTourPhotos, toursController.update)
     .delete(restrictTo(ROLES.ADMIN, ROLES.LEAD_GUIDE, ROLES.GUIDE), toursController.delete);
+
+router.delete('/:id/images/:filename', toursController.deleteTourImage);
 
 // Nested Routes
 router.route("/:tourId/reviews")
