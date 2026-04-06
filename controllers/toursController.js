@@ -184,80 +184,142 @@ class ToursController {
     // todo belirli koordinatlardaki turları filtrele
     async getToursWithin(req, res) {
         try {
-            // parametrelere eriş
-            const {distance, latlng, unit} = req.params;
+            const { distance, latlng, unit } = req.params;
 
-            // enlem ve boylamı ayır
+            // 1. Koordinatları ayır
             const [lat, lng] = latlng.split(",");
 
-            // merkez noktası yoksa hata
-            if (!lat || !lng) {
+            // 2. Sayısal dönüşümleri yap
+            const latitude = Number(lat);
+            const longitude = Number(lng);
+            const dist = Number(distance);
+
+            // 3. Geçerlilik Kontrolleri (Validation)
+            if (isNaN(latitude) || isNaN(longitude)) {
                 return res.status(400).json({
-                    status: 'fail', message: 'Lütfen merkez noktasını belirleyin',
+                    status: 'fail',
+                    message: 'Lütfen geçerli sayısal enlem ve boylam değerleri girin (Örn: 38.4,27.1)',
                 });
             }
 
-            // radius hesaplama (radyan cinsinden)
-            const radius = unit === 'mi' ? distance / 3963.2 : distance / 6378.1;
+            if (isNaN(dist) || dist <= 0) {
+                return res.status(400).json({
+                    status: 'fail',
+                    message: 'Mesafe (distance) pozitif bir sayı olmalıdır.',
+                });
+            }
 
-            // belirlenen dairesel alandaki turları filtrele
+            let radian;
+            if (unit === 'mi' || unit === 'mil') {
+                radian = dist / 3963.2; // Mil için dünya yarıçapı
+            } else if (unit === 'km') {
+                radian = dist / 6378.1; // Kilometre için dünya yarıçapı
+            } else {
+                // Eğer km, mi veya mil değilse hata döndür
+                return res.status(400).json({
+                    status: 'fail',
+                    message: "Lütfen geçerli bir birim girin: 'km', 'mi' veya 'mil'.",
+                });
+            }
+
+
+            // 5. MongoDB Sorgusu
+            // [longitude, latitude] sırasına dikkat!
             const tours = await Tour.find({
                 startLocation: {
                     $geoWithin: {
-                        $centerSphere: [[parseFloat(lng), parseFloat(lat)], radius], // ⚠️ dikkat: GeoJSON formatında [lng, lat] sırası kullanılmalı
+                        $centerSphere: [[longitude, latitude], radian],
                     },
                 },
             });
 
             res.status(200).json({
-                status: 'success', message: 'Sınırlar içerisindeki turlar alındı', results: tours.length, tours,
+                status: 'success',
+                message: `${distance}'${unit} mesafede ${tours.length} tur bulundu `,
+                results: tours.length,
+                data: {
+                   tours
+                }
             });
+
         } catch (err) {
             res.status(500).json({
-                status: 'error', message: err.message,
+                status: 'error',
+                message: err.message,
             });
         }
     }
 
     async getDistances(req, res) {
         try {
-            // URL parametreleri
-            const {latlng, unit} = req.params;
+            const { latlng, unit } = req.params;
 
-            // enlem ve boylamı ayır
+            // 1. Koordinatları ayır ve sayıya çevir
             const [lat, lng] = latlng.split(",");
+            const latitude = Number(lat);
+            const longitude = Number(lng);
 
-            // enlem veya boylam yoksa hata
-            if (!lat || !lng) {
+            // 2. Geçerlilik kontrolü
+            if (isNaN(latitude) || isNaN(longitude)) {
                 return res.status(400).json({
-                    status: 'fail', message: 'Lütfen merkez noktayı tanımlayın',
+                    status: 'fail',
+                    message: 'Lütfen geçerli sayısal enlem ve boylam değerleri girin (Örn: 38,35)',
                 });
             }
 
-            // unit'e göre multiplier (mi veya km)
-            const multiplier = unit === 'mi' ? 0.000621371192 : 0.001;
+            // 3. Unit kontrolü ve Multiplier (Çarpan) belirleme
+            // MongoDB varsayılan olarak METRE döner.
+            let multiplier;
+            if (unit === 'mi' || unit === 'mil') {
+                multiplier = 0.000621371192;
+            } else if (unit === 'km') {
+                multiplier = 0.001;
+            } else {
+                return res.status(400).json({
+                    status: 'fail',
+                    message: "Lütfen geçerli bir birim girin: 'km', 'mi' veya 'mil'.",
+                });
+            }
 
-            // GeoNear aggregation pipeline
-            const distances = await Tour.aggregate([{
-                $geoNear: {
-                    near: {type: 'Point', coordinates: [parseFloat(lng), parseFloat(lat)]},
-                    distanceField: 'distance',
-                    distanceMultiplier: multiplier,
-                    spherical: true, // 2dsphere index için önemli
+            const distances = await Tour.aggregate([
+                {
+                    $geoNear: {
+                        near: {
+                            type: 'Point',
+                            coordinates: [longitude, latitude]
+                        },
+                        distanceField: 'distance',
+                        distanceMultiplier: multiplier,
+                        spherical: true,
+                    },
                 },
-            }, {
-                $project: {
-                    name: 1, distance: 1,
+                {
+                    // $addFields kullanarak mevcut 'distance' alanını yuvarlayalım
+                    $addFields: {
+                        distance: { $round: ['$distance', 1] }
+                    }
                 },
-            },]);
+                {
+                    $project: {
+                        name: 1,
+                        distance: 1,
+                    },
+                },
+            ]);
 
             res.status(200).json({
-                status: 'success', message: 'Uzaklıklar hesaplandı', results: distances.length, distances,
+                status: 'success',
+                message: `Turların merkeze olan uzaklıkları (${unit}) hesaplandı.`,
+                results: distances.length,
+                data: {
+                    data: distances
+                },
             });
 
         } catch (err) {
             res.status(500).json({
-                status: 'error', message: err.message,
+                status: 'error',
+                message: 'Uzaklık hesaplanırken bir hata oluştu: ' + err.message,
             });
         }
     }

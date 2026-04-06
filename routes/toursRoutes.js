@@ -42,12 +42,16 @@ router.route("/:id")
     .delete(restrictTo(ROLES.ADMIN, ROLES.LEAD_GUIDE, ROLES.GUIDE), toursController.delete);
 
 // Nested Routes
-// POST /api/tours/123456/reviews > tura yeni bir torum ekle
-// GET /api/tours/123456/reviews > tura ait olan bütün yorumları al
-// GET /api/tours/123456/reviews/5679856754 > tura ait olan yorumların arasından belirli id'deki yorumu al
 router.route("/:tourId/reviews")
     .get(reviewController.getTourReviews)
     .post(reviewController.createReview );
 
+// coğrafi filtreleme
+router
+    .route("/tours-within/:distance/center/:latlng/unit/:unit")
+    .get(toursController.getToursWithin);
+
+// uzaklık hesaplama
+router.route("/distances/:latlng/unit/:unit").get(toursController.getDistances);
 
 export default router;

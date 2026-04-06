@@ -142,5 +142,7 @@ tourSchema.virtual("reviews", {
 
 tourSchema.index({ price: 1, ratingsAverage: -1 });
 
+tourSchema.index({startLocation: "2dsphere"})
+
 const Tour = mongoose.model("Tour", tourSchema);
 export default Tour;
